@@ -19,8 +19,13 @@ export default function AuctionDetailsPage({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isSubmitModalOpen, setIsSubmitModalOpen] = useState(false);
+  const [prefilledCarrier, setPrefilledCarrier] = useState("");
 
-  // Auto-refresh interval (polling for live auction updates)
+  const handleOpenSubmit = (carrier = "") => {
+    setPrefilledCarrier(carrier);
+    setIsSubmitModalOpen(true);
+  };
+
   const fetchDetails = async () => {
     try {
       const data = await api.getRFQById(rfqId);
@@ -34,13 +39,13 @@ export default function AuctionDetailsPage({
 
   useEffect(() => {
     fetchDetails();
-    const interval = setInterval(fetchDetails, 4000); // Poll every 4 seconds for live room updates
+    const interval = setInterval(fetchDetails, 4000);
     return () => clearInterval(interval);
   }, [rfqId]);
 
   if (loading && !rfq) {
     return (
-      <div className="p-16 text-center text-slate-400 bg-slate-900/30 rounded-2xl border border-slate-800">
+      <div className="p-16 text-center text-slate-500 bg-white rounded-2xl border border-slate-200 shadow-xs">
         Loading Auction Cockpit...
       </div>
     );
@@ -48,11 +53,11 @@ export default function AuctionDetailsPage({
 
   if (error || !rfq) {
     return (
-      <div className="p-8 text-center bg-rose-500/10 border border-rose-500/30 rounded-2xl">
-        <p className="text-rose-400 font-semibold">{error || "RFQ not found."}</p>
+      <div className="p-8 text-center bg-rose-50 border border-rose-200 rounded-2xl shadow-xs">
+        <p className="text-rose-700 font-semibold">{error || "RFQ not found."}</p>
         <button
           onClick={onBack}
-          className="mt-4 px-4 py-2 bg-slate-800 text-slate-200 text-xs font-bold rounded-lg"
+          className="mt-4 px-4 py-2 bg-slate-900 text-white text-xs font-semibold rounded-xl"
         >
           Back to RFQs
         </button>
@@ -71,7 +76,7 @@ export default function AuctionDetailsPage({
       <div className="flex items-center justify-between">
         <button
           onClick={onBack}
-          className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-sky-400 transition"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-indigo-600 transition"
         >
           ← Back to All RFQs
         </button>
@@ -82,9 +87,9 @@ export default function AuctionDetailsPage({
             extensionCount={rfq.extension_count}
           />
           <button
-            onClick={() => setIsSubmitModalOpen(true)}
+            onClick={() => handleOpenSubmit("")}
             disabled={!isAuctionActive}
-            className="px-4 py-2 rounded-lg text-xs font-bold text-white bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 disabled:opacity-40 disabled:cursor-not-allowed shadow-md shadow-sky-600/30 transition active:scale-95"
+            className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-blue-600 via-indigo-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 disabled:opacity-40 disabled:cursor-not-allowed shadow-sm shadow-indigo-600/25 transition active:scale-95"
           >
             + Submit Supplier Quote
           </button>
@@ -92,30 +97,37 @@ export default function AuctionDetailsPage({
       </div>
 
       {/* Hero Header & Countdown Cockpit */}
-      <div className="p-6 rounded-2xl bg-slate-900/80 border border-slate-800 shadow-xl flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+      <div className="p-6 md:p-8 rounded-3xl bg-white border border-slate-200/90 shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative overflow-hidden">
+        {/* Subtle decorative gradient top bar */}
+        <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600"></div>
+
         <div>
-          <div className="flex items-center gap-2 font-mono text-xs text-sky-400 font-bold uppercase tracking-wider mb-1">
+          <div className="flex items-center gap-2 font-mono text-xs text-indigo-600 font-bold uppercase tracking-wider mb-1.5">
             <span>{rfq.reference_id}</span>
-            <span className="text-slate-600">•</span>
-            <span className="text-slate-400">
-              Pickup: {formatDateTime(rfq.pickup_date).split(",")[0]}
+            <span className="text-slate-300">•</span>
+            <span className="text-slate-500 font-sans">
+              Pickup Date: {formatDateTime(rfq.pickup_date).split(",")[0]}
             </span>
           </div>
 
-          <h2 className="text-xl sm:text-2xl font-black text-slate-100 tracking-tight">
+          <h2 className="text-xl sm:text-2xl md:text-3xl font-black text-slate-900 tracking-tight">
             {rfq.title}
           </h2>
 
-          <div className="flex flex-wrap items-center gap-2 mt-2 text-xs text-slate-300">
-            <span className="font-semibold">{rfq.origin}</span>
-            <span className="text-sky-400 font-bold">➔</span>
-            <span className="font-semibold">{rfq.destination}</span>
+          <div className="flex flex-wrap items-center gap-2 mt-2 text-xs font-medium text-slate-600">
+            <span className="px-2.5 py-1 rounded-md bg-slate-100 text-slate-800 font-semibold">
+              Origin: {rfq.origin}
+            </span>
+            <span className="text-indigo-500 font-bold">➔</span>
+            <span className="px-2.5 py-1 rounded-md bg-slate-100 text-slate-800 font-semibold">
+              Destination: {rfq.destination}
+            </span>
           </div>
         </div>
 
         {/* Real-time Countdown Box */}
-        <div className="bg-slate-950/70 p-4 rounded-xl border border-slate-800/80 min-w-[320px]">
-          <span className="text-[11px] text-slate-400 uppercase tracking-wider font-semibold block mb-1">
+        <div className="bg-slate-50/80 p-5 rounded-2xl border border-slate-200/80 min-w-[320px] shadow-xs">
+          <span className="text-[11px] text-slate-500 uppercase tracking-wider font-semibold block mb-1">
             Auction Closing In:
           </span>
           <CountdownTimer
@@ -129,33 +141,45 @@ export default function AuctionDetailsPage({
       </div>
 
       {/* British Auction Configuration Bar */}
-      <div className="p-4 rounded-xl bg-slate-950/60 border border-slate-800 grid grid-cols-1 sm:grid-cols-4 gap-4 text-xs">
-        <div>
-          <span className="text-slate-500 block">Trigger Window (X):</span>
-          <strong className="text-slate-200 text-sm font-mono">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+        <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs">
+          <span className="text-slate-400 text-xs font-medium block">
+            Trigger Window (X):
+          </span>
+          <strong className="text-slate-900 text-sm font-mono mt-0.5 block">
             Last {config.trigger_window_minutes || 10} Minutes
           </strong>
+          <span className="text-[10px] text-slate-400">Activity monitored before close</span>
         </div>
 
-        <div>
-          <span className="text-slate-500 block">Extension Duration (Y):</span>
-          <strong className="text-amber-300 text-sm font-mono">
-            +{config.extension_duration_minutes || 5} Minutes
+        <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs">
+          <span className="text-slate-400 text-xs font-medium block">
+            Extension Duration (Y):
+          </span>
+          <strong className="text-amber-700 text-sm font-mono mt-0.5 block">
+            +{config.extension_duration_minutes || 5} Minutes Added
           </strong>
+          <span className="text-[10px] text-slate-400">Time added per trigger</span>
         </div>
 
-        <div>
-          <span className="text-slate-500 block">Extension Trigger Mode:</span>
-          <strong className="text-sky-300 text-sm">
+        <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs">
+          <span className="text-slate-400 text-xs font-medium block">
+            Extension Trigger Mode:
+          </span>
+          <strong className="text-indigo-700 text-sm mt-0.5 block">
             {getTriggerModeLabel(config.trigger_mode)}
           </strong>
+          <span className="text-[10px] text-slate-400">Extension activation rule</span>
         </div>
 
-        <div>
-          <span className="text-slate-500 block">Forced Close Limit:</span>
-          <strong className="text-rose-400 text-sm font-mono">
+        <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs">
+          <span className="text-slate-400 text-xs font-medium block">
+            Forced Close Hard Ceiling:
+          </span>
+          <strong className="text-rose-600 text-sm font-mono mt-0.5 block">
             {formatDateTime(rfq.forced_bid_close_time)}
           </strong>
+          <span className="text-[10px] text-slate-400">Unbreachable hard deadline</span>
         </div>
       </div>
 
@@ -164,19 +188,19 @@ export default function AuctionDetailsPage({
         {/* Left Column: Leaderboard & Quotes (2/3 width) */}
         <div className="lg:col-span-2 space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-base font-bold text-slate-200 flex items-center gap-2">
+            <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
               <span>Competitive Leaderboard</span>
-              <span className="text-xs px-2 py-0.5 rounded-full bg-slate-800 text-slate-400">
-                {rfq.quotes ? rfq.quotes.length : 0} quotes
+              <span className="text-xs px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 font-semibold border border-slate-200">
+                {rfq.quotes ? rfq.quotes.length : 0} competing suppliers
               </span>
             </h3>
 
             {rfq.lowest_bid && (
               <div className="text-right">
-                <span className="text-[11px] text-slate-400 mr-2">
+                <span className="text-xs text-slate-500 mr-2">
                   Winning Bid (L1):
                 </span>
-                <span className="font-mono font-black text-amber-300 text-base">
+                <span className="font-mono font-black text-emerald-700 text-lg">
                   {formatCurrency(rfq.lowest_bid)}
                 </span>
               </div>
@@ -185,23 +209,24 @@ export default function AuctionDetailsPage({
 
           <LeaderboardTable
             quotes={rfq.quotes}
-            onOpenSubmitModal={() => setIsSubmitModalOpen(true)}
+            onOpenSubmitModal={handleOpenSubmit}
+            isAuctionActive={isAuctionActive}
           />
         </div>
 
         {/* Right Column: Real-time Activity Log (1/3 width) */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-base font-bold text-slate-200">
+            <h3 className="text-base font-bold text-slate-900">
               Auction Audit Trail
             </h3>
-            <span className="text-[11px] text-slate-400 flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-              Live Sync
+            <span className="text-xs text-slate-500 flex items-center gap-1.5 font-medium">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              Live Sync Active
             </span>
           </div>
 
-          <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800 shadow-lg">
+          <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs">
             <ActivityLogTimeline logs={rfq.activity_logs} />
           </div>
         </div>
@@ -213,6 +238,7 @@ export default function AuctionDetailsPage({
         onClose={() => setIsSubmitModalOpen(false)}
         rfq={rfq}
         api={api}
+        initialCarrier={prefilledCarrier}
         onSubmitSuccess={() => {
           fetchDetails();
         }}

@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 from typing import List, Optional
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from app.models.rfq import RFQ
 from app.models.quote import Quote
 from app.schemas.quote import QuoteCreate, QuoteSubmissionResult, QuoteResponse
@@ -15,7 +16,9 @@ from app.services.auction_service import (
 
 def submit_quote(rfq_id: int, data: QuoteCreate, db: Session) -> QuoteSubmissionResult:
     """
-    Submits a quote on an active RFQ and evaluates British Auction extension rules.
+    Submits or revises a quote for an RFQ and evaluates British Auction extension rules.
+    If the carrier already submitted a quote, their existing quote is updated to the
+    new lower price, ensuring each company appears exactly once on the leaderboard.
     """
     rfq = db.query(RFQ).filter(RFQ.id == rfq_id).with_for_update().first()
     if not rfq:
@@ -52,19 +55,55 @@ def submit_quote(rfq_id: int, data: QuoteCreate, db: Session) -> QuoteSubmission
         2
     )
 
-    quote = Quote(
-        rfq_id=rfq.id,
-        carrier_name=data.carrier_name,
-        freight_charges=data.freight_charges,
-        origin_charges=data.origin_charges,
-        destination_charges=data.destination_charges,
-        total_price=total_price,
-        transit_time=data.transit_time,
-        validity_date=to_naive_utc(data.validity_date),
-        calculated_rank=1,
-        submitted_at=now
-    )
-    db.add(quote)
+    normalized_carrier = data.carrier_name.strip()
+
+    # Check if this carrier already has an active quote for this RFQ
+    existing_quotes = db.query(Quote).filter(
+        Quote.rfq_id == rfq.id,
+        func.lower(Quote.carrier_name) == func.lower(normalized_carrier)
+    ).all()
+
+    if existing_quotes:
+        # Carrier is revising an existing quote: update the primary quote and clean up any duplicates
+        quote = existing_quotes[0]
+        prev_price = float(quote.total_price)
+
+        # In reverse auctions, a supplier cannot revise upwards
+        if total_price >= prev_price:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"{normalized_carrier} already has a quote of ${prev_price:,.2f}. Revisions must be strictly lower than your current quote."
+            )
+
+        quote.carrier_name = normalized_carrier
+        quote.freight_charges = data.freight_charges
+        quote.origin_charges = data.origin_charges
+        quote.destination_charges = data.destination_charges
+        quote.total_price = total_price
+        quote.transit_time = data.transit_time
+        quote.validity_date = to_naive_utc(data.validity_date)
+        quote.submitted_at = now
+
+        # Remove any legacy duplicate entries for this carrier if present
+        for extra in existing_quotes[1:]:
+            db.delete(extra)
+
+    else:
+        # First quote from this carrier
+        quote = Quote(
+            rfq_id=rfq.id,
+            carrier_name=normalized_carrier,
+            freight_charges=data.freight_charges,
+            origin_charges=data.origin_charges,
+            destination_charges=data.destination_charges,
+            total_price=total_price,
+            transit_time=data.transit_time,
+            validity_date=to_naive_utc(data.validity_date),
+            calculated_rank=1,
+            submitted_at=now
+        )
+        db.add(quote)
+
     db.flush()
 
     # Recalculate ranks for all quotes in this RFQ
@@ -90,9 +129,24 @@ def submit_quote(rfq_id: int, data: QuoteCreate, db: Session) -> QuoteSubmission
 
 def list_quotes_for_rfq(rfq_id: int, db: Session) -> List[Quote]:
     """
-    Returns all quotes for an RFQ, sorted by total price ascending (L1, L2, L3...).
+    Returns unique quotes per carrier for an RFQ, sorted by total price ascending (L1, L2, L3...).
     """
-    return db.query(Quote).filter(Quote.rfq_id == rfq_id).order_by(
+    quotes = db.query(Quote).filter(Quote.rfq_id == rfq_id).order_by(
         Quote.total_price.asc(),
         Quote.submitted_at.asc()
     ).all()
+
+    # Deduplicate by carrier name (keep lowest price)
+    unique_quotes = []
+    seen = set()
+    for q in quotes:
+        key = q.carrier_name.strip().lower()
+        if key not in seen:
+            seen.add(key)
+            unique_quotes.append(q)
+
+    # Ensure rank sequence 1, 2, 3...
+    for idx, q in enumerate(unique_quotes):
+        q.calculated_rank = idx + 1
+
+    return unique_quotes

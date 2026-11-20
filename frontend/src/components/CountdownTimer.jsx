@@ -35,51 +35,39 @@ export default function CountdownTimer({
     remaining.totalSeconds <= triggerWindowMinutes * 60;
 
   return (
-    <div className="flex flex-col gap-1">
-      <div className="flex items-center gap-3">
+    <div className="flex flex-col gap-1.5">
+      <div className="flex flex-wrap items-center gap-2.5">
         <div
-          className={`font-mono text-2xl md:text-3xl font-extrabold tracking-wider px-3 py-1.5 rounded-lg border transition-all ${
+          className={`font-mono text-2xl md:text-3xl font-black tracking-wider px-3.5 py-1.5 rounded-xl border transition-all ${
             isClosed
-              ? "bg-slate-800/80 text-slate-400 border-slate-700"
+              ? "bg-slate-100 text-slate-400 border-slate-200"
               : isInsideTriggerWindow
-              ? "bg-amber-950/40 text-amber-300 border-amber-500/60 shadow-lg shadow-amber-500/20 animate-pulse"
-              : "bg-sky-950/40 text-sky-300 border-sky-500/40"
+              ? "bg-amber-50 text-amber-900 border-amber-300 shadow-sm shadow-amber-500/20"
+              : "bg-white text-slate-900 border-slate-200 shadow-xs"
           }`}
         >
           {isClosed ? "00:00:00" : remaining.text}
         </div>
 
         {isInsideTriggerWindow && (
-          <div className="flex items-center gap-1.5 px-2.5 py-1 bg-amber-500/20 border border-amber-500/50 rounded text-amber-300 text-xs font-bold uppercase tracking-wider animate-bounce">
-            <svg
-              className="w-3.5 h-3.5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M13 10V3L4 14h7v7l9-11h-7z"
-              />
-            </svg>
+          <div className="flex items-center gap-1.5 px-2.5 py-1 bg-amber-100/80 border border-amber-300/80 rounded-lg text-amber-800 text-[11px] font-bold uppercase tracking-wider animate-pulse">
+            <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping"></span>
             Trigger Window Active ({triggerWindowMinutes}m)
           </div>
         )}
       </div>
 
-      <div className="flex items-center gap-4 text-xs text-slate-400 mt-1">
+      <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 mt-0.5">
         <span>
           Current Close:{" "}
-          <strong className="text-slate-200">
+          <strong className="text-slate-800 font-semibold font-mono">
             {formatTimeOnly(currentCloseTime)}
           </strong>
         </span>
-        <span className="text-slate-600">•</span>
+        <span className="text-slate-300">•</span>
         <span>
-          Forced Close Ceiling:{" "}
-          <strong className="text-rose-300 font-mono">
+          Forced Ceiling:{" "}
+          <strong className="text-rose-600 font-semibold font-mono">
             {formatTimeOnly(forcedCloseTime)}
           </strong>
         </span>

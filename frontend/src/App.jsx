@@ -28,7 +28,7 @@ export default function App() {
 
   useEffect(() => {
     fetchRFQs();
-    const interval = setInterval(fetchRFQs, 6000); // Background refresh
+    const interval = setInterval(fetchRFQs, 6000);
     return () => clearInterval(interval);
   }, []);
 
@@ -43,7 +43,10 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-sky-500 selection:text-white">
+    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans relative overflow-x-hidden">
+      {/* Decorative background subtle gradients */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-96 bg-gradient-to-br from-indigo-100/60 via-sky-50/40 to-transparent pointer-events-none -z-10 blur-3xl"></div>
+
       {/* Top Navbar */}
       <Navbar
         onOpenCreateModal={() => setIsCreateModalOpen(true)}
@@ -52,8 +55,8 @@ export default function App() {
 
       {/* Backend Connectivity Notice (if disconnected) */}
       {!backendHealthy && (
-        <div className="bg-rose-500/20 border-b border-rose-500/40 px-4 py-2 text-center text-xs text-rose-300 font-semibold">
-          ⚠️ Cannot connect to FastAPI backend at http://localhost:8000. Please ensure the backend server is running.
+        <div className="bg-amber-50 border-b border-amber-200 px-4 py-2.5 text-center text-xs text-amber-800 font-medium shadow-sm">
+          ⚠️ Cannot connect to FastAPI backend at <code className="bg-amber-100 px-1 py-0.5 rounded text-amber-900">http://localhost:8000</code>. Please ensure the backend server is running.
         </div>
       )}
 
@@ -77,13 +80,19 @@ export default function App() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-slate-800/80 bg-slate-950/80 py-6 text-center text-xs text-slate-500">
-        <p>
-          British Auction Engine in RFQ System • Full Stack Engineering Assessment (GoComet)
-        </p>
-        <p className="mt-1 font-mono text-[11px] text-slate-600">
-          Tech Stack: React.js • FastAPI • SQLAlchemy • MySQL
-        </p>
+      <footer className="border-t border-slate-200 bg-white py-6 text-center text-xs text-slate-500 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <p className="font-medium text-slate-600">
+            British Auction Engine in RFQ System • Full Stack Engineering Assessment
+          </p>
+          <div className="flex items-center gap-3 text-slate-400 text-xs">
+            <span>React.js</span>
+            <span>•</span>
+            <span>FastAPI</span>
+            <span>•</span>
+            <span>MySQL</span>
+          </div>
+        </div>
       </footer>
 
       {/* Create RFQ Modal */}

@@ -30,7 +30,7 @@ class AuctionConfigResponse(AuctionConfigBase):
         from_attributes = True
 
 class RFQBase(BaseModel):
-    reference_id: str = Field(..., min_length=3, max_length=100)
+    reference_id: Optional[str] = Field(default=None, max_length=100, description="Optional custom reference ID; auto-generated if omitted")
     title: str = Field(..., min_length=3, max_length=255)
     origin: str = Field(..., min_length=2, max_length=150)
     destination: str = Field(..., min_length=2, max_length=150)
