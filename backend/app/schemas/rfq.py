@@ -1,8 +1,13 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, List
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, model_validator, field_validator
 from app.schemas.quote import QuoteResponse
 from app.schemas.activity_log import ActivityLogResponse
+
+def to_naive_utc(dt: datetime) -> datetime:
+    if dt is not None and dt.tzinfo is not None:
+        return dt.astimezone(timezone.utc).replace(tzinfo=None)
+    return dt
 
 class AuctionConfigBase(BaseModel):
     is_british_auction: bool = True
@@ -34,14 +39,27 @@ class RFQBase(BaseModel):
     original_bid_close_time: datetime
     forced_bid_close_time: datetime
 
+    @field_validator("pickup_date", "bid_start_time", "original_bid_close_time", "forced_bid_close_time", mode="after")
+    @classmethod
+    def strip_timezone(cls, v: datetime) -> datetime:
+        return to_naive_utc(v)
+
 class RFQCreate(RFQBase):
     config: Optional[AuctionConfigCreate] = None
 
     @model_validator(mode="after")
     def validate_time_rules(self):
-        if self.bid_start_time >= self.original_bid_close_time:
+        start = to_naive_utc(self.bid_start_time)
+        close = to_naive_utc(self.original_bid_close_time)
+        forced = to_naive_utc(self.forced_bid_close_time)
+
+        self.bid_start_time = start
+        self.original_bid_close_time = close
+        self.forced_bid_close_time = forced
+
+        if start >= close:
             raise ValueError("Bid Close Time must be strictly later than Bid Start Time.")
-        if self.original_bid_close_time >= self.forced_bid_close_time:
+        if close >= forced:
             raise ValueError("Forced Bid Close Time must be strictly later than Bid Close Time.")
         return self
 

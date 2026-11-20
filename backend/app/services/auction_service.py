@@ -1,9 +1,14 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Tuple, Optional, List, Dict, Any
 from sqlalchemy.orm import Session
 from app.models.rfq import RFQ, AuctionConfig
 from app.models.quote import Quote
 from app.models.activity_log import AuctionActivityLog
+
+def to_naive_utc(dt: datetime) -> datetime:
+    if dt is not None and dt.tzinfo is not None:
+        return dt.astimezone(timezone.utc).replace(tzinfo=None)
+    return dt
 
 def sync_rfq_status(rfq: RFQ, db: Session) -> str:
     """
@@ -13,12 +18,16 @@ def sync_rfq_status(rfq: RFQ, db: Session) -> str:
     now = datetime.utcnow()
     initial_status = rfq.status
 
-    if now < rfq.bid_start_time:
+    start_time = to_naive_utc(rfq.bid_start_time)
+    current_close = to_naive_utc(rfq.current_bid_close_time)
+    forced_close = to_naive_utc(rfq.forced_bid_close_time)
+
+    if now < start_time:
         rfq.status = "SCHEDULED"
-    elif now >= rfq.forced_bid_close_time:
+    elif now >= forced_close:
         rfq.status = "FORCE_CLOSED"
-    elif now >= rfq.current_bid_close_time:
-        if rfq.current_bid_close_time >= rfq.forced_bid_close_time:
+    elif now >= current_close:
+        if current_close >= forced_close:
             rfq.status = "FORCE_CLOSED"
         else:
             rfq.status = "CLOSED"
@@ -37,8 +46,8 @@ def sync_rfq_status(rfq: RFQ, db: Session) -> str:
                 rfq_id=rfq.id,
                 event_type=event,
                 message=msg,
-                previous_close_time=rfq.current_bid_close_time,
-                new_close_time=rfq.current_bid_close_time,
+                previous_close_time=current_close,
+                new_close_time=current_close,
                 metadata_payload={"status": rfq.status}
             )
             db.add(log)
@@ -107,8 +116,9 @@ def evaluate_bid_and_extension(
     3. Clamps extension to forced_bid_close_time.
     """
     config: Optional[AuctionConfig] = rfq.config
-    submission_time = new_quote.submitted_at or datetime.utcnow()
-    prev_close = rfq.current_bid_close_time
+    submission_time = to_naive_utc(new_quote.submitted_at) or datetime.utcnow()
+    prev_close = to_naive_utc(rfq.current_bid_close_time)
+    forced_close = to_naive_utc(rfq.forced_bid_close_time)
 
     # If British Auction is disabled, simply log bid
     if not config or not config.is_british_auction:
@@ -160,15 +170,10 @@ def evaluate_bid_and_extension(
         )
 
     elif trigger_mode == "ANY_RANK_CHANGE":
-        # Check if ranking changed
         carrier = new_quote.carrier_name
         old_rank = pre_snapshot["carrier_ranks"].get(carrier)
         new_rank = new_quote.calculated_rank
 
-        # Ranking changes if:
-        # a) this is a new carrier entering at rank <= existing count, or
-        # b) existing carrier improved their rank (new_rank < old_rank)
-        # c) a new quote shifted other existing ranks down
         if pre_snapshot["total_quotes"] == 0:
             triggered = True
             trigger_reason = f"Initial bid established rank L1 by {carrier} (${float(new_quote.total_price):,.2f}) in trigger window."
@@ -182,7 +187,6 @@ def evaluate_bid_and_extension(
             triggered = False
 
     elif trigger_mode == "L1_RANK_CHANGE":
-        # Check if new quote took L1 position (lowest price overall)
         if new_quote.calculated_rank == 1:
             prev_l1_carrier = pre_snapshot.get("l1_carrier")
             prev_l1_price = pre_snapshot.get("l1_price")
@@ -228,7 +232,7 @@ def evaluate_bid_and_extension(
     tentative_close = prev_close + extension_delta
 
     # Rule: Auction extensions must NEVER exceed Forced Bid Close Time
-    if tentative_close <= rfq.forced_bid_close_time:
+    if tentative_close <= forced_close:
         new_close = tentative_close
         rfq.current_bid_close_time = new_close
         rfq.extension_count += 1
@@ -252,17 +256,15 @@ def evaluate_bid_and_extension(
         return True, trigger_reason, new_close, prev_close
 
     else:
-        # tentative_close > forced_bid_close_time
-        if prev_close < rfq.forced_bid_close_time:
-            # Clamp to forced close time
-            new_close = rfq.forced_bid_close_time
+        if prev_close < forced_close:
+            new_close = forced_close
             rfq.current_bid_close_time = new_close
             rfq.extension_count += 1
             rfq.status = "EXTENDED"
 
             clamp_reason = (
                 f"{trigger_reason} Auction extended to Forced Bid Close Time ceiling "
-                f"({rfq.forced_bid_close_time.strftime('%H:%M:%S UTC')})."
+                f"({forced_close.strftime('%H:%M:%S UTC')})."
             )
             log = AuctionActivityLog(
                 rfq_id=rfq.id,
@@ -273,7 +275,7 @@ def evaluate_bid_and_extension(
                 metadata_payload={
                     "carrier": new_quote.carrier_name,
                     "price": float(new_quote.total_price),
-                    "forced_bid_close_time": rfq.forced_bid_close_time.isoformat(),
+                    "forced_bid_close_time": forced_close.isoformat(),
                     "reason": clamp_reason
                 }
             )
@@ -282,13 +284,12 @@ def evaluate_bid_and_extension(
             return True, clamp_reason, new_close, prev_close
 
         else:
-            # Already at forced close time -> cannot extend further
             log = AuctionActivityLog(
                 rfq_id=rfq.id,
                 event_type="BID_SUBMITTED",
                 message=(
                     f"Bid placed by {new_quote.carrier_name} (${float(new_quote.total_price):,.2f}), "
-                    f"but auction is already at Forced Bid Close Time ({rfq.forced_bid_close_time.strftime('%H:%M:%S UTC')}). "
+                    f"but auction is already at Forced Bid Close Time ({forced_close.strftime('%H:%M:%S UTC')}). "
                     f"No further extensions allowed."
                 ),
                 previous_close_time=prev_close,

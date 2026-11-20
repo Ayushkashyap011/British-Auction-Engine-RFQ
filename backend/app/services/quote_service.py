@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
@@ -9,14 +9,14 @@ from app.services.auction_service import (
     sync_rfq_status,
     recalculate_ranks,
     get_current_rankings_snapshot,
-    evaluate_bid_and_extension
+    evaluate_bid_and_extension,
+    to_naive_utc
 )
 
 def submit_quote(rfq_id: int, data: QuoteCreate, db: Session) -> QuoteSubmissionResult:
     """
     Submits a quote on an active RFQ and evaluates British Auction extension rules.
     """
-    # Fetch RFQ (with lock for concurrency safety)
     rfq = db.query(RFQ).filter(RFQ.id == rfq_id).with_for_update().first()
     if not rfq:
         raise HTTPException(
@@ -32,9 +32,11 @@ def submit_quote(rfq_id: int, data: QuoteCreate, db: Session) -> QuoteSubmission
             detail=f"Cannot submit quote: RFQ is currently {current_status}."
         )
 
-    # Verify time window
+    # Verify time window (ensure naive UTC comparison)
     now = datetime.utcnow()
-    if now > rfq.current_bid_close_time:
+    close_time = to_naive_utc(rfq.current_bid_close_time)
+
+    if now > close_time:
         sync_rfq_status(rfq, db)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -58,7 +60,7 @@ def submit_quote(rfq_id: int, data: QuoteCreate, db: Session) -> QuoteSubmission
         destination_charges=data.destination_charges,
         total_price=total_price,
         transit_time=data.transit_time,
-        validity_date=data.validity_date,
+        validity_date=to_naive_utc(data.validity_date),
         calculated_rank=1,
         submitted_at=now
     )

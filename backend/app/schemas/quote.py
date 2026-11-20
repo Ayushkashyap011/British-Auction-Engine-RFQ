@@ -1,6 +1,11 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+def to_naive_utc(dt: datetime) -> datetime:
+    if dt is not None and dt.tzinfo is not None:
+        return dt.astimezone(timezone.utc).replace(tzinfo=None)
+    return dt
 
 class QuoteCreate(BaseModel):
     carrier_name: str = Field(..., min_length=2, max_length=150)
@@ -9,6 +14,11 @@ class QuoteCreate(BaseModel):
     destination_charges: float = Field(..., ge=0, description="Destination charges")
     transit_time: str = Field(..., min_length=1, max_length=100)
     validity_date: datetime
+
+    @field_validator("validity_date", mode="after")
+    @classmethod
+    def strip_timezone(cls, v: datetime) -> datetime:
+        return to_naive_utc(v)
 
 class QuoteResponse(BaseModel):
     id: int

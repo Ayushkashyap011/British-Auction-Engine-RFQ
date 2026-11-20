@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import func
@@ -8,24 +8,34 @@ from app.models.activity_log import AuctionActivityLog
 from app.schemas.rfq import RFQCreate, RFQListItem, RFQDetailResponse
 from app.services.auction_service import sync_rfq_status
 
+def to_naive_utc(dt: datetime) -> datetime:
+    if dt is not None and dt.tzinfo is not None:
+        return dt.astimezone(timezone.utc).replace(tzinfo=None)
+    return dt
+
 def create_rfq(data: RFQCreate, db: Session) -> RFQ:
     """
     Creates an RFQ along with its British Auction configuration.
     Initializes current_bid_close_time to original_bid_close_time.
     """
     now = datetime.utcnow()
-    initial_status = "SCHEDULED" if now < data.bid_start_time else "ACTIVE"
+    bid_start = to_naive_utc(data.bid_start_time)
+    bid_close = to_naive_utc(data.original_bid_close_time)
+    forced_close = to_naive_utc(data.forced_bid_close_time)
+    pickup = to_naive_utc(data.pickup_date)
+
+    initial_status = "SCHEDULED" if now < bid_start else "ACTIVE"
 
     rfq = RFQ(
         reference_id=data.reference_id,
         title=data.title,
         origin=data.origin,
         destination=data.destination,
-        pickup_date=data.pickup_date,
-        bid_start_time=data.bid_start_time,
-        original_bid_close_time=data.original_bid_close_time,
-        current_bid_close_time=data.original_bid_close_time,
-        forced_bid_close_time=data.forced_bid_close_time,
+        pickup_date=pickup,
+        bid_start_time=bid_start,
+        original_bid_close_time=bid_close,
+        current_bid_close_time=bid_close,
+        forced_bid_close_time=forced_close,
         status=initial_status,
         extension_count=0
     )
