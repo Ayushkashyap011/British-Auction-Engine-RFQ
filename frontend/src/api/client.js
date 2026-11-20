@@ -2,7 +2,11 @@
  * API client for interacting with the FastAPI British Auction Backend
  */
 
-const BASE_URL = import.meta.env.VITE_API_URL || "";
+const BASE_URL =
+  import.meta.env.VITE_API_URL ||
+  (import.meta.env.PROD
+    ? "https://british-auction-engine-rfq-backend.onrender.com"
+    : "");
 
 async function request(endpoint, options = {}) {
   const url = `${BASE_URL}${endpoint}`;

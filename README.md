@@ -2,12 +2,22 @@
 > **Full Stack Engineering Assessment | GoComet**  
 > A production-ready Request for Quotation (RFQ) reverse-auction platform featuring **British Auction anti-sniping soft extensions**, **forced close hard ceilings**, **real-time carrier ranking ($L_1, L_2, \dots$)**, and **clean enterprise procurement UX**.
 
-[![FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688?style=flat-square&logo=fastapi)](https://fastapi.tiangolo.com)
+[![FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688?style=flat-square&logo=fastapi)](https://british-auction-engine-rfq-backend.onrender.com/docs)
 [![Python](https://img.shields.io/badge/Language-Python%203.11-blue?style=flat-square&logo=python)](https://python.org)
-[![React](https://img.shields.io/badge/Frontend-React.js%2018-61DAFB?style=flat-square&logo=react)](https://react.dev)
+[![React](https://img.shields.io/badge/Frontend-React.js%2018-61DAFB?style=flat-square&logo=react)](https://auctionrfq.netlify.app/)
+[![Netlify](https://img.shields.io/badge/Deploy-Netlify-00C7B7?style=flat-square&logo=netlify)](https://auctionrfq.netlify.app/)
+[![Render](https://img.shields.io/badge/Deploy-Render-46E3B7?style=flat-square&logo=render)](https://british-auction-engine-rfq-backend.onrender.com/docs)
 [![MySQL](https://img.shields.io/badge/Database-MySQL%208.0-4479A1?style=flat-square&logo=mysql)](https://mysql.com)
 [![SQLAlchemy](https://img.shields.io/badge/ORM-SQLAlchemy%202.0-D71F00?style=flat-square&logo=sqlalchemy)](https://www.sqlalchemy.org)
 [![TailwindCSS](https://img.shields.io/badge/Styling-TailwindCSS-38B2AC?style=flat-square&logo=tailwind-css)](https://tailwindcss.com)
+
+---
+
+### 🌐 Live Deployment Links
+* 🚀 **Live Frontend Application**: [https://auctionrfq.netlify.app/](https://auctionrfq.netlify.app/)
+* ⚡ **Live Backend API Docs (Swagger UI)**: [https://british-auction-engine-rfq-backend.onrender.com/docs](https://british-auction-engine-rfq-backend.onrender.com/docs)
+* 🩺 **Live Health Check Endpoint**: [https://british-auction-engine-rfq-backend.onrender.com/api/health](https://british-auction-engine-rfq-backend.onrender.com/api/health)
+
 
 ---
 
